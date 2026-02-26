@@ -1,1 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AI Media Tool</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-bg: var(--tg-theme-bg-color, #ffffff);
+            --tg-text: var(--tg-theme-text-color, #222222);
+            --tg-btn: var(--tg-theme-button-color, #2481cc);
+            --tg-btn-text: var(--tg-theme-button-text-color, #ffffff);
+        }
+        body { background: var(--tg-bg); color: var(--tg-text); font-family: -apple-system, sans-serif; padding: 20px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 400px; }
+        .preview-box { width: 100%; height: 250px; border: 2px dashed #ccc; border-radius: 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; position: relative; }
+        #previewImg { max-width: 100%; max-height: 100%; object-fit: contain; display: none; }
+        .btn { background: var(--tg-btn); color: var(--tg-btn-text); border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 10px; transition: opacity 0.2s; }
+        .btn-upload { background: #28a745; }
+        .loading { display: none; font-size: 14px; color: var(--tg-hint-color); margin-bottom: 10px; }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="preview-box" onclick="document.getElementById('fileInput').click()">
+            <span id="placeholder">Нажми, чтобы выбрать фото</span>
+            <img id="previewImg" src="">
+        </div>
+        <input type="file" id="fileInput" accept="image/*">
 
+        <div id="status" class="loading">Обработка нейросетью...</div>
+
+        <button class="btn btn-upload" onclick="document.getElementById('fileInput').click()">📂 Выбрать другое фото</button>
+        <button class="btn" onclick="sendToAI('clean')">✂️ Удалить фон (PNG)</button>
+        <button class="btn" onclick="sendToAI('white_bg')">📦 Для маркетплейса (Белый)</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const fileInput = document.getElementById('fileInput');
+        const previewImg = document.getElementById('previewImg');
+        const placeholder = document.getElementById('placeholder');
+        const status = document.getElementById('status');
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                previewImg.src = URL.createObjectURL(file);
+                previewImg.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+        };
+
+        async function sendToAI(mode) {
+            const file = fileInput.files[0];
+            if (!file) {
+                tg.showAlert("Сначала выбери изображение!");
+                return;
+            }
+
+            status.style.display = 'block';
+            tg.MainButton.showProgress();
+            tg.MainButton.setText("Магия в процессе...").show();
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('mode', mode);
+
+            try {
+                // ТВОЙ СЕРВЕР С HTTPS
+                const response = await fetch('https://media.kintether.org/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("Сервер не отвечает");
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                // Создаем временную ссылку для скачивания
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `ai_result_${Date.now()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                tg.HapticFeedback.notificationOccurred('success');
+            } catch (err) {
+                tg.showAlert("Ошибка: " + err.message);
+                console.error(err);
+            } finally {
+                status.style.display = 'none';
+                tg.MainButton.hide();
+            }
+        }
+    </script>
+</body>
+</html>
