@@ -56,10 +56,7 @@
 
         async function sendToAI(mode) {
             const file = fileInput.files[0];
-            if (!file) {
-                tg.showAlert("Сначала выбери изображение!");
-                return;
-            }
+            if (!file) return tg.showAlert("Сначала выбери фото!");
 
             status.style.display = 'block';
             tg.MainButton.showProgress();
@@ -70,7 +67,6 @@
             formData.append('mode', mode);
 
             try {
-                // ТВОЙ СЕРВЕР С HTTPS
                 const response = await fetch('https://media.kintether.org/process', {
                     method: 'POST',
                     body: formData
@@ -81,18 +77,15 @@
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 
-                // Создаем временную ссылку для скачивания
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `ai_result_${Date.now()}.png`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
+                // Показываем результат в превью вместо скачивания
+                previewImg.src = url;
+                previewImg.style.display = 'block';
+                placeholder.style.display = 'none';
+
+                tg.showAlert("Готово! Зажми фото пальцем, чтобы сохранить его в галерею.");
                 tg.HapticFeedback.notificationOccurred('success');
             } catch (err) {
                 tg.showAlert("Ошибка: " + err.message);
-                console.error(err);
             } finally {
                 status.style.display = 'none';
                 tg.MainButton.hide();
